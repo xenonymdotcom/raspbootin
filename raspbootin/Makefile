@@ -19,6 +19,16 @@
 PREFIX ?= /usr
 ARMGNU ?= $(PREFIX)/bin/arm-none-eabi
 
+HOST_ARCH=$(shell uname -m)
+
+ifeq ($(HOST_ARCH),armv6l)
+GCC=g++
+GOBJCPY=objcopy
+else
+GCC ?= $(ARMGNU)-g++
+GOBJCPY ?= $(ARMGNU)-objcopy
+endif
+
 # source files
 SOURCES_ASM := $(wildcard *.S)
 SOURCES_CC  := $(wildcard *.cc)
@@ -48,7 +58,11 @@ WARNFLAGS   += -Wwrite-strings -Wdisabled-optimization -Wpointer-arith
 WARNFLAGS   += -Werror
 ASFLAGS     := $(INCLUDES) $(DEPENDFLAGS) -D__ASSEMBLY__
 CXXFLAGS    := $(INCLUDES) $(DEPENDFLAGS) $(BASEFLAGS) $(WARNFLAGS)
+ifeq ($(HOST_ARCH),armv6l)
+CXXFLAGS    += -fno-exceptions -std=gnu++0x
+else
 CXXFLAGS    += -fno-exceptions -std=gnu++11
+endif
 LDFLAGS     := $(BASEFLAGS)
 
 # build rules
@@ -57,10 +71,12 @@ all: kernel.img
 include $(wildcard *.d)
 
 kernel.elf: $(OBJS) link-arm-eabi.ld
-	$(ARMGNU)-g++ $(LDFLAGS) $(OBJS) -lgcc -Tlink-arm-eabi.ld -o $@
+	echo "host arch" $(HOST_ARCH)
+	echo "GCC" $(GCC)
+	$(GCC) $(LDFLAGS) $(OBJS) -lgcc -Tlink-arm-eabi.ld -o $@
 
 kernel.img: kernel.elf
-	$(ARMGNU)-objcopy kernel.elf -O binary kernel.img
+	$(GOBJCPY) kernel.elf -O binary kernel.img
 
 clean:
 	$(RM) -f $(OBJS) kernel.elf kernel.img
@@ -71,8 +87,12 @@ dist-clean: clean
 
 # C++.
 %.o: %.cc Makefile
-	$(ARMGNU)-g++ $(CXXFLAGS) -c $< -o $@
+	echo "host arch" $(HOST_ARCH)
+	echo "GCC" $(GCC)
+	$(GCC) $(CXXFLAGS) -c $< -o $@
 
 # AS.
 %.o: %.S Makefile
-	$(ARMGNU)-g++ $(ASFLAGS) -c $< -o $@
+	echo "host arch" $(HOST_ARCH)
+	echo "GCC" $(GCC)
+	$(GCC) $(ASFLAGS) -c $< -o $@

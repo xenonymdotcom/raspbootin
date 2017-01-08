@@ -26,8 +26,36 @@ extern "C" {
     // kernel_main gets called from boot.S. Declaring it extern "C" avoid
     // having to deal with the C++ name mangling.
     void kernel_main(uint32_t r0, uint32_t r1, const Header *atags);
+
+    // fake raise function
+    void raise(){}
 }
 
+typedef void (*constructorFunc)(void);
+
+// this first static constructor function
+extern "C" constructorFunc _init_array_start[];
+
+// the next pointer after the last static constructor
+extern "C" constructorFunc _init_array_end[];
+
+// void implementations of the C++ ABI required functions
+extern "C" void __aeabi_unwind_cpp_pr0(void)
+{
+}
+
+extern "C" void __aeabi_atexit(void)
+{
+}
+
+extern "C" void __dso_handle(void)
+{
+}
+
+extern "C" void __cxa_pure_virtual(void)
+{
+	while(1) { ; }
+}
 
 #define LOADER_ADDR 0x2000000
 
@@ -65,7 +93,12 @@ const char *find(const char *str, const char *token) {
 
 // kernel main function, it all begins here
 void kernel_main(uint32_t r0, uint32_t r1, const Header *atags) {
-    // Fixgure out what kind of Raspberry we are booting on
+    constructorFunc *fn_init = _init_array_start;
+    while(fn_init < _init_array_end) 
+    {
+        (*fn_init++)();
+    }
+    // Figure out what kind of Raspberry we are booting on
     // default to basic Raspberry Pi
     arch_info = &arch_infos[ArchInfo::RPI];
     const Cmdline *cmdline = atags->find<Cmdline>();
@@ -78,9 +111,9 @@ void kernel_main(uint32_t r0, uint32_t r1, const Header *atags) {
     
     UART::init();
 again:
-    kprintf(hello);
+    kprintf("%s", hello);
     kprintf("######################################################################\n");
-    kprintf("R0 = %#010lx, R1 = %#010lx, ATAGs @ %p\n", r0, r1, atags);
+    kprintf("R0 = %#010x, R1 = %#010x, ATAGs @ %p\n", r0, r1, atags);
     atags->print_all();
     kprintf("Detected '%s'\n", arch_info->model);
     kprintf("######################################################################\n");

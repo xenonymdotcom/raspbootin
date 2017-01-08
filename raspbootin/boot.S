@@ -68,5 +68,6 @@ Start:
 
 	// halt
 halt:
-	wfe
+	mov r0, #0
+	mcr p15, 0, r0, c7, c0, 4
 	b	halt

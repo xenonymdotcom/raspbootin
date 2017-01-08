@@ -28,6 +28,13 @@ SECTIONS
         KEEP(*(.text.boot))
         *(.text)
     }
+    _init_array_start = .;
+    .init_array : 
+	{
+		KEEP(*(.init_array))
+	    KEEP(*(.init_array*))
+	}
+    _init_array_end = .;
     . = ALIGN(4096); /* align to page size */
     _text_end = .;
     _rodata_start = .;
